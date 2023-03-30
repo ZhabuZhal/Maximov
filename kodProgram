@@ -1,0 +1,249 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Configuration;
+using System.Data.SqlClient;
+
+
+namespace аррПетров
+{
+    public partial class Form1 : Form
+    { 
+
+        private SqlConnection sqlCon = null;
+
+        private SqlCommandBuilder sqlBuild = null;
+
+        private SqlDataAdapter sqlDataAdapt = null;
+
+        private DataSet dataSet = new DataSet();
+
+        DataTable dataTable = new DataTable();
+
+        private bool rowAdd = false;
+
+        int index = 0;
+
+        public void Declare(string name, DataGridView dataGridView, int index)
+        {
+            sqlBuild = new SqlCommandBuilder(sqlDataAdapt);
+
+            sqlBuild.GetDeleteCommand();
+            sqlBuild.GetInsertCommand();
+            sqlBuild.GetUpdateCommand();
+
+            dataSet = new DataSet();
+
+            sqlDataAdapt.Fill(dataSet, name);
+
+            dataGridView.DataSource = dataSet.Tables[name];
+
+            for (int i = 0; i < dataGridView.Rows.Count; i++)
+            {
+                DataGridViewLinkCell linkCell = new DataGridViewLinkCell();
+
+                dataGridView[index, i] = linkCell;
+            }
+        }
+        public void ReloadData(string query, DataGridView dgv, int rowIndex)
+        {
+            SqlDataAdapter adapter = new SqlDataAdapter(query, sqlCon);
+            dataTable.Clear();
+            adapter.Fill(dataTable);
+            dgv.DataSource = dataTable;
+
+            for (int i = 0; i < dgv.Rows.Count; i++)
+            {
+                DataGridViewLinkCell linkCell = new DataGridViewLinkCell();
+
+                dgv[rowIndex, i] = linkCell;
+            }
+        }
+        public void commandTask(DataGridViewCellEventArgs e,
+           DataGridView dataGrid, int index, string name,
+           string column1, string column2, string column3, string column4)
+        {
+            string task = dataGrid.Rows[e.RowIndex].Cells[index].Value.ToString();
+            if (task == "Delete")
+            {
+                if (MessageBox.Show("Видалити цей рядок?", "Видалення",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+                    == DialogResult.Yes)
+                {
+                    int rowIndex = e.RowIndex;
+                    dataGrid.Rows.RemoveAt(rowIndex);
+                    dataSet.Tables[name].Rows[rowIndex].Delete();
+                    sqlDataAdapt.Update(dataSet, name);
+                }
+            }
+            else if (task == "Insert")
+            {
+                int rowIndex = dataGrid.Rows.Count - 2;
+
+                DataRow row = dataSet.Tables[name].NewRow();
+
+                row[column1] = dataGrid.Rows[rowIndex].Cells[column1].Value;
+                row[column2] = dataGrid.Rows[rowIndex].Cells[column2].Value;
+                row[column3] = dataGrid.Rows[rowIndex].Cells[column3].Value;
+                row[column4] = dataGrid.Rows[rowIndex].Cells[column4].Value;
+
+                dataSet.Tables[name].Rows.Add(row);
+
+                dataSet.Tables[name].Rows.RemoveAt(dataSet.Tables[name].Rows.Count - 1);
+
+                dataGrid.Rows.RemoveAt(dataGrid.Rows.Count - 2);
+
+                dataGrid.Rows[e.RowIndex].Cells[index].Value = "Delete";
+
+                sqlDataAdapt.Update(dataSet, name);
+
+                rowAdd = false;
+            }
+            else if (task == "Update")
+            {
+                int r = e.RowIndex;
+
+                dataSet.Tables[name].Rows[r][column1] = dataGrid.Rows[r].Cells[column1].Value;
+                dataSet.Tables[name].Rows[r][column2] = dataGrid.Rows[r].Cells[column2].Value;
+                dataSet.Tables[name].Rows[r][column3] = dataGrid.Rows[r].Cells[column3].Value;
+                dataSet.Tables[name].Rows[r][column4] = dataGrid.Rows[r].Cells[column4].Value;
+
+                sqlDataAdapt.Update(dataSet, name);
+
+                dataGrid.Rows[e.RowIndex].Cells[index].Value = "Delete";
+            }
+
+        }
+        public void AddedRow(DataGridView dataGrid, int index)
+        {
+
+            rowAdd = true;
+
+            int lastRow = dataGrid.Rows.Count - 2;
+
+            DataGridViewRow row = dataGrid.Rows[lastRow];
+
+            DataGridViewLinkCell linkCell = new DataGridViewLinkCell();
+
+            dataGrid[index, lastRow] = linkCell;
+
+            row.Cells["Команди"].Value = "Insert";
+        }
+        public void CellValueChanged(DataGridView dataGrid, int index)
+        {
+            if (rowAdd == false)
+            {
+                int rowIndex = dataGrid.SelectedCells[0].RowIndex;
+
+                DataGridViewRow editingRow = dataGrid.Rows[rowIndex];
+
+                DataGridViewLinkCell linkCell = new DataGridViewLinkCell();
+
+                dataGrid[index, rowIndex] = linkCell;
+
+                editingRow.Cells["Команди"].Value = "Update";
+            }
+        }
+        public void LoadData()
+        {
+            try
+            {
+                sqlDataAdapt = new SqlDataAdapter("SELECT *, 'Delete' AS [Команди] FROM Виробники", sqlCon);
+
+                Declare("Виробники", dataGridView1, 5);
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Помилка!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        public void LoadData2()
+        {
+            try
+            {
+                sqlDataAdapt = new SqlDataAdapter("SELECT *, 'Delete' AS [Команди] FROM Накладні", sqlCon);
+
+                Declare("Накладні", dataGridView2, 4);
+            }
+
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Помилка!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        public Form1()
+        {
+            InitializeComponent();
+        }
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            sqlCon = new SqlConnection(ConfigurationManager.ConnectionStrings["connectdb"].ConnectionString);
+            sqlCon.Open();
+            LoadData();          
+        }
+
+        private void tabControl1_SelectedIndexChanged_1(object sender, EventArgs e)
+        {
+            if (tabControl1.SelectedIndex == 0)
+            {
+                ReloadData("SELECT *, 'Delete' AS [Команди] FROM Виробники", dataGridView1, 5);
+            }
+            else if (tabControl1.SelectedIndex == 1)
+            {
+               LoadData2();
+                /*ReloadData("SELECT *, 'Delete' AS [Команди] FROM Накладні", dataGridView2, 5);*/
+            }
+        }
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            try
+            {
+                if (e.ColumnIndex == 5)
+                {
+                    commandTask(e,
+                    dataGridView1, 5, "Виробники",
+                    "Виробник", "Адреса", "Телефон", "Контакт");
+                    ReloadData("SELECT *, 'Delete' AS [Команди] FROM Виробники", dataGridView1, 5);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Помилка!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        private void dataGridView1_UserAddedRow_1(object sender, DataGridViewRowEventArgs e)
+        {
+            try
+            {
+                if (rowAdd == false)
+                {
+                    AddedRow(dataGridView1, 5);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Помилка!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void dataGridView1_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+              try
+              {
+                  CellValueChanged(dataGridView1, 5);
+              }
+              catch (Exception ex)
+              {
+                  MessageBox.Show(ex.Message, "Помилка!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+              }           
+        }
+    }
+}
