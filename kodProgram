@@ -32,12 +32,7 @@ namespace аррПетров
 
         public void Declare(string name, DataGridView dataGridView, int index)
         {
-            sqlBuild = new SqlCommandBuilder(sqlDataAdapt);
-
-            sqlBuild.GetDeleteCommand();
-            sqlBuild.GetInsertCommand();
-            sqlBuild.GetUpdateCommand();
-
+           
             dataSet = new DataSet();
 
             sqlDataAdapt.Fill(dataSet, name);
@@ -85,25 +80,33 @@ namespace аррПетров
             else if (task == "Insert")
             {
                 int rowIndex = dataGrid.Rows.Count - 2;
+                if (dataSet.Tables.Contains(name))
+                {
+                    DataRow row = dataSet.Tables[name].NewRow();
 
-                DataRow row = dataSet.Tables[name].NewRow();
+                    row[column1] = dataGrid.Rows[rowIndex].Cells[column1].Value;
+                    row[column2] = dataGrid.Rows[rowIndex].Cells[column2].Value;
+                    row[column3] = dataGrid.Rows[rowIndex].Cells[column3].Value;
+                    row[column4] = dataGrid.Rows[rowIndex].Cells[column4].Value;
 
-                row[column1] = dataGrid.Rows[rowIndex].Cells[column1].Value;
-                row[column2] = dataGrid.Rows[rowIndex].Cells[column2].Value;
-                row[column3] = dataGrid.Rows[rowIndex].Cells[column3].Value;
-                row[column4] = dataGrid.Rows[rowIndex].Cells[column4].Value;
+                    dataSet.Tables[name].Rows.Add(row);
 
-                dataSet.Tables[name].Rows.Add(row);
+                    dataSet.Tables[name].Rows.RemoveAt(dataSet.Tables[name].Rows.Count - 1);
 
-                dataSet.Tables[name].Rows.RemoveAt(dataSet.Tables[name].Rows.Count - 1);
+                    dataGrid.Rows.RemoveAt(dataGrid.Rows.Count - 2);
 
-                dataGrid.Rows.RemoveAt(dataGrid.Rows.Count - 2);
+                    dataGrid.Rows[e.RowIndex].Cells[index].Value = "Delete";
 
-                dataGrid.Rows[e.RowIndex].Cells[index].Value = "Delete";
+                    dataTable.Clear();
+                    sqlDataAdapt.Fill(dataTable);
+                    dataGrid.DataSource = dataTable;
 
-                sqlDataAdapt.Update(dataSet, name);
-
-                rowAdd = false;
+                    rowAdd = false;
+                }
+                else
+                {
+                    dataSet.Tables.Add(new DataTable(name));
+                }                
             }
             else if (task == "Update")
             {
@@ -155,6 +158,7 @@ namespace аррПетров
             try
             {
                 sqlDataAdapt = new SqlDataAdapter("SELECT *, 'Delete' AS [Команди] FROM Виробники", sqlCon);
+
 
                 Declare("Виробники", dataGridView1, 5);
 
@@ -247,3 +251,4 @@ namespace аррПетров
         }
     }
 }
+
