@@ -32,7 +32,12 @@ namespace аррПетров
 
         public void Declare(string name, DataGridView dataGridView, int index)
         {
-           
+            sqlBuild = new SqlCommandBuilder(sqlDataAdapt);
+
+            sqlBuild.GetDeleteCommand();
+            sqlBuild.GetInsertCommand();
+            sqlBuild.GetUpdateCommand();
+
             dataSet = new DataSet();
 
             sqlDataAdapt.Fill(dataSet, name);
